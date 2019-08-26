@@ -1,4 +1,12 @@
 <?php
+/**
+ * Project scripts-telegram-bot-send-message
+ * Created by PhpStorm
+ * User: 713uk13m <dev@nguyenanhung.com>
+ * Copyright: 713uk13m <dev@nguyenanhung.com>
+ * Date: 8/24/19
+ * Time: 10:09
+ */
 
 namespace tungvandev\Example\TelegramBOT;
 
@@ -11,15 +19,18 @@ use Curl\Curl;
  *
  * @package tungvandev\Example\TelegramBOT
  */
-class Telegram
+class Telegram implements TelegramInterface
 {
-
-    private $request; // Alias cURL
-    private $logger; // Logger
-    private $config; // Mảng cấu hình thông tin BOT
-
-    private $chat_id; // ID chat room
-    private $message; // Nội dung tin nhắn cần gửi đi
+    /** @var object|null Alias cURL class \Curl\Curl */
+    private $request;
+    /** @var object|null \Monolog\Logger */
+    private $logger;
+    /** @var array|null Mảng cấu hình thông tin BOT */
+    private $config;
+    /** @var string|int|null ID của chat room */
+    private $chat_id;
+    /** @var string|null|mixed Nội dung tin nhắn cần gửi đi */
+    private $message;
 
     /**
      * Telegram constructor.
@@ -40,19 +51,11 @@ class Telegram
      *
      * @return $this
      */
-    public function setConfig($config = [])
+    public function setConfig($config = array())
     {
         $this->config = $config;
 
         return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getConfig()
-    {
-        return $this->config;
     }
 
     /**
@@ -67,14 +70,6 @@ class Telegram
         $this->chat_id = $chat_id;
 
         return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getChatId()
-    {
-        return $this->chat_id;
     }
 
     /**
@@ -109,6 +104,13 @@ class Telegram
         // Bắt lỗi
         // Ko tồn tại chat_id || message || không xác định được request
         if (empty($this->chat_id) || empty($this->message) || empty($this->config) || !isset($this->config['bot_token'])) {
+            $errorContext = array(
+                'chat_id' => $this->chat_id,
+                'message' => $this->message,
+                'config'  => $this->config
+            );
+            $this->logger->error('Không xác định được thông tin cần thiết', $errorContext);
+
             return FALSE;
         }
         // Xác đinh Endpoint gửi tin đi
@@ -122,7 +124,15 @@ class Telegram
 
         // Request tới Telegram
         $handle = $this->request->get($endpoint, $params);
+        if (empty($handle)) {
+            $this->logger->error('Không thực hiện được request CURL');
+
+            // Không xác định được response, lỗi chứ còn gì nữa
+            return FALSE;
+        }
         if ($handle->error) {
+            $this->logger->error('CURL Request is Error', $handle->errorMessage);
+
             return FALSE;
         }
 
@@ -149,10 +159,7 @@ class Telegram
         //    )
         //)
 
-        if (empty($handle)) {
-            // Không xác định được response, lỗi chứ còn gì nữa
-            return FALSE;
-        }
+
         if (isset($handle->ok) && $handle->ok == TRUE) {
             // Send Message thành công, body trường ok == true
             return TRUE;
